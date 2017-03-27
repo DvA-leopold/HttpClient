@@ -20,8 +20,6 @@ TCPClient::~TCPClient()
 
 bool TCPClient::Connect(const char* hostName)
 {
-
-
 	struct addrinfo *servinfo, *next_addrinfo;
 
 	int rc = getaddrinfo(hostName, "http", NULL, &servinfo);

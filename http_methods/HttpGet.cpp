@@ -1,7 +1,3 @@
-//
-// Created by operator on 3/26/17.
-//
-
 #include "HttpGet.h"
 
 HttpGet::HttpGet(const std::string& url)

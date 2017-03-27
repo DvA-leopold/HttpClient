@@ -1,7 +1,3 @@
-//
-// Created by operator on 3/26/17.
-//
-
 #include "HttpPost.h"
 
 //HttpPost::HttpPost(const std::string& url)

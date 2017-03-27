@@ -1,8 +1,3 @@
-//
-// Created by operator on 3/25/17.
-//
-
-#include <future>
 #include "HTTPClient.h"
 
 HTTPClient::HTTPClient(bool async)

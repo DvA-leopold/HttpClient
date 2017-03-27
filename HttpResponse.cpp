@@ -1,7 +1,3 @@
-//
-// Created by operator on 3/25/17.
-//
-
 #include "HttpResponse.h"
 
 HttpResponse::HttpResponse(std::future<std::string>&& futureResponse)

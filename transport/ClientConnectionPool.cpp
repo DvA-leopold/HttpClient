@@ -1,7 +1,3 @@
-//
-// Created by operator on 3/26/17.
-//
-
 #include "ClientConnectionPool.h"
 
 ClientConnectionPool::ClientConnectionPool(unsigned poolCapacity)

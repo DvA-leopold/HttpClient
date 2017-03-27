@@ -1,7 +1,3 @@
-//
-// Created by operator on 3/26/17.
-//
-
 #ifndef HTTPCLIENT_HTTPHEAD_H
 #define HTTPCLIENT_HTTPHEAD_H
 
