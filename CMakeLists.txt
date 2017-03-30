@@ -6,11 +6,9 @@ set(CMAKE_CXX_FLAGS "-lpthread")
 
 set(SOURCE_FILES main.cpp
         HTTPClient.cpp HTTPClient.h
-        transport/ClientConnectionPool.cpp transport/ClientConnectionPool.h
-        http_methods/HttpGet.cpp http_methods/HttpGet.h
-        http_methods/HttpPost.cpp http_methods/HttpPost.h
-        HttpResponse.cpp HttpResponse.h
+        response_handlers/HttpGetResponse.cpp response_handlers/HttpGetResponse.h
+        response_handlers/HttpHeadResponse.cpp response_handlers/HttpHeadResponse.h
+        transport/TCPTransportManager.cpp transport/TCPTransportManager.h
         http_methods/IHttpMethod.h
-        http_methods/HttpHead.cpp http_methods/HttpHead.h
-        transport/TCPClient.cpp transport/TCPClient.h)
+        response_handlers/IHttpResponse.h)
 add_executable(HttpClient ${SOURCE_FILES})

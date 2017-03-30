@@ -1,12 +1,18 @@
 #include "HTTPClient.h"
 
-HTTPClient::HTTPClient(bool async)
-        : async(async) { }
+HTTPClient::HTTPClient()
+        : connectionManager(true)
+{ }
 
-HttpResponse HTTPClient::execute(IHttpMethod* executeMethod)
+void HTTPClient::execute(IHttpMethod* executeMethod, IHttpResponse* const httpResponseEntity)
 {
-	std::future<std::string> futureResponse = connectionPool.send(executeMethod->getHost(),
-																  executeMethod->generateHTTPRequest());
-	HttpResponse response = async ? HttpResponse(std::move(futureResponse)) : HttpResponse(futureResponse.get());
-	return response;
+	try
+	{
+		connectionManager.Connect(executeMethod->getHost(), httpResponseEntity);
+		connectionManager.Send(executeMethod->getHost(), executeMethod->generateHTTPRequest());
+	}
+	catch (const std::runtime_error& err)
+	{
+		std::cerr << err.what() << std::endl;
+	}
 }

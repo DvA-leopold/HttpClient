@@ -1,21 +1,18 @@
 #ifndef HTTPCLIENT_HTTPCLIENT_H
 #define HTTPCLIENT_HTTPCLIENT_H
 
-#include <string>
-#include "transport/ClientConnectionPool.h"
 #include "http_methods/IHttpMethod.h"
-#include "HttpResponse.h"
+#include "response_handlers/HttpGetResponse.h"
+#include "transport/TCPTransportManager.h"
 
 class HTTPClient
 {
 public:
-    HTTPClient(bool async = false);
-
-    HttpResponse execute(IHttpMethod* executeMethod);
+    HTTPClient();
+    void execute(IHttpMethod* executeMethod, IHttpResponse* const httpResponseEntity);
 
 private:
-    const bool async;
-    ClientConnectionPool connectionPool;
+    TCPTransportManager connectionManager;
 };
 
 
