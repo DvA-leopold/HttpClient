@@ -19,20 +19,31 @@ public:
 				Methods method)
             : m_url(url), uriPath("/")
 	{
-		// all hell broke loose here
-		// better to use standard libs for this
-		if (m_url.find("//") != std::string::npos)
+		size_t doubleSlash = m_url.find("//");
+		if (doubleSlash != std::string::npos)
 		{
-			m_url = m_url.substr(m_url.find("//") + 2);
+			m_url = m_url.substr(doubleSlash + 2);
 		}
-		uriHost = m_url.substr(0, m_url.find('/'));
-		if (m_url.find_last_of('/') != m_url.find('/'))
+		size_t firstSlash = m_url.find('/');
+		size_t lastSlash = m_url.find_last_of('/');
+		size_t questionMark = m_url.find('?');
+		size_t hashTag = m_url.find('#');
+
+		uriHost = m_url.substr(0, firstSlash);
+
+		if (lastSlash != firstSlash)
 		{
-			uriPath = m_url.substr(m_url.find('/'), m_url.find_last_of('/'));
+			uriPath = m_url.substr(firstSlash, questionMark == std::string::npos ? m_url.size() : questionMark);
 		}
-		if (m_url.find_last_of('/') != std::string::npos)
+
+		if (questionMark != std::string::npos)
 		{
-			uriParams = m_url.substr(m_url.find_last_of('/'));
+			uriQuery = m_url.substr(questionMark, hashTag == std::string::npos ? m_url.size() : hashTag);
+		}
+
+		if (hashTag != std::string::npos)
+		{
+			uriFragment = m_url.substr(hashTag);
 		}
 
 		switch (method)
@@ -59,6 +70,8 @@ public:
 			requestStream << param << "\r\n";
 		}
 		requestStream << "\r\n";
+
+		std::cout << "http request: " << requestStream.str() << std::endl;
 		return requestStream.str();
 	}
 
@@ -76,7 +89,8 @@ protected:
 	std::string requestMethod;
 	std::string uriHost;
 	std::string uriPath;
-	std::string uriParams;
+	std::string uriQuery;
+	std::string uriFragment;
 
 private:
 	std::vector<std::string> requestParams;
