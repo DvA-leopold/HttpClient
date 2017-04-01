@@ -35,7 +35,7 @@ public:
 
 		if (ftrStatus != std::future_status::ready)
 		{
-			throw std::runtime_error("timeout exceeded. Current timeout: " + secondsWaitForResponse);
+			throw std::runtime_error("timeout exceeded: " + std::to_string(secondsWaitForResponse) + " sec");
 		}
 
 		parseResponse(responseFuture.get());

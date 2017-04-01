@@ -51,7 +51,6 @@ private:
 	std::atomic<TransportStates> state;
 
 private:
-	bool startAsync;
 	size_t chunkSize;
 	const int millisecondsTimeout;
 	long long totalMSGsize = 0;

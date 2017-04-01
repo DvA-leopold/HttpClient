@@ -4,8 +4,6 @@
 
 int main()
 {
-	// TODO need to handle several response for one domain at a time
-
 	try
 	{
 		HTTPClient client;

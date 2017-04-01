@@ -3,14 +3,12 @@
 
 TCPTransportManager::TCPTransportManager(int millisecondsTimeout)
 		: chunkSize(512),
-		  startAsync(true),
 		  millisecondsTimeout(millisecondsTimeout),
 		  state(PROCEED)
 { }
 
 TCPTransportManager::TCPTransportManager(size_t chunkSize, int millisecondsTimeout)
 		: chunkSize(chunkSize),
-		  startAsync(true),
 		  millisecondsTimeout(millisecondsTimeout),
 		  state(PROCEED)
 { }
@@ -81,7 +79,6 @@ void TCPTransportManager::Disconnect(const std::string& hostName)
 	if (connectionIter != connectionMap.end())
 	{
 		connectionMap.erase(connectionIter);
-		shutdown(connectionIter->second.first, SHUT_RDWR); // TODO do i need this?
 		close(connectionIter->second.first);
 	}
 	state = REFRESH;
@@ -118,10 +115,9 @@ void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
 		std::cout << "bytes send: " << bytesSend << std::endl;
 	}
 
-	if (startAsync) // TODO looks ugly
+	if (!packetReceiver.joinable())
 	{
 		packetReceiver = std::thread(&TCPTransportManager::Poll, this);
-		startAsync = false;
 	}
 }
 
