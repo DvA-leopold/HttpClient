@@ -10,7 +10,8 @@ void HttpHeadResponse::responseCallback(std::string&& responseChunk)
 	size_t searchCarriege = shift < 0 ? 0 : shift;
 	if (localResponse.find("\r\n\r\n", searchCarriege) != std::string::npos)
 	{
-		moveResponseAtomic(localResponse);
+		std::cout << "HEAD" << std::endl;
+		moveResponseAtomically(localResponse);
 	}
 }
 

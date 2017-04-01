@@ -3,6 +3,7 @@
 
 
 #include "IHttpResponse.h"
+#include <iostream>
 
 class HttpHeadResponse
 		: public IHttpResponse

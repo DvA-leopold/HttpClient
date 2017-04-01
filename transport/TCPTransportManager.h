@@ -16,17 +16,26 @@
 #include <mutex>
 #include "../response_handlers/IHttpResponse.h"
 
-typedef std::pair<int, IHttpResponse*> sock_response;
+typedef std::pair<int, std::shared_ptr<IHttpResponse>> sock_response;
 typedef std::unique_ptr<addrinfo, std::function<void(addrinfo*)>> uniq_ptr_del;
+
+enum TransportStates
+{
+	STOP,
+	PROCEED,
+	REFRESH
+};
 
 class TCPTransportManager
 {
 public:
 	TCPTransportManager(int millisecondsTimeout = 5 * 1000);
-	TCPTransportManager(bool startAsync, size_t chunkSize = 512, int millisecondsTimeout = 5 * 1000);
+	TCPTransportManager(size_t chunkSize = 512, int millisecondsTimeout = 5 * 1000);
 	~TCPTransportManager();
 
-	void Connect(const std::string& hostName, IHttpResponse* const responseEntity);
+	void Connect(const std::string& hostName, const std::shared_ptr<IHttpResponse>& responseEntity);
+	void Disconnect(const std::string& hostName);
+	void DisconnectAll();
 	void Send(const std::string& hostName, std::string&& data);
 
 private:
@@ -39,12 +48,13 @@ private:
 
 private:
 	std::thread packetReceiver;
-	std::atomic<bool> stop;
+	std::atomic<TransportStates> state;
 
 private:
 	bool startAsync;
 	size_t chunkSize;
 	const int millisecondsTimeout;
+	long long totalMSGsize = 0;
 };
 
 

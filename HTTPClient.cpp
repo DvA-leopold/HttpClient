@@ -1,18 +1,18 @@
 #include "HTTPClient.h"
 
 HTTPClient::HTTPClient()
-        : connectionManager(true)
+        : connectionManager(5*1000)
 { }
 
-void HTTPClient::execute(IHttpMethod* executeMethod, IHttpResponse* const httpResponseEntity)
+std::shared_ptr<IHttpResponse> HTTPClient::execute(HttpMethod& executeMethod)
 {
-	try
-	{
-		connectionManager.Connect(executeMethod->getHost(), httpResponseEntity);
-		connectionManager.Send(executeMethod->getHost(), executeMethod->generateHTTPRequest());
-	}
-	catch (const std::runtime_error& err)
-	{
-		std::cerr << err.what() << std::endl;
-	}
+	std::shared_ptr<IHttpResponse> response = executeMethod.generateResponseEntity();
+	connectionManager.Connect(executeMethod.getHost(), response);
+	connectionManager.Send(executeMethod.getHost(), executeMethod.generateHTTPRequest());
+	return response;
+}
+
+void HTTPClient::CloseClient()
+{
+	connectionManager.DisconnectAll();
 }

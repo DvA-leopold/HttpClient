@@ -85,7 +85,7 @@ private:
 protected:
 	virtual void parseResponse(const std::string& response) = 0;
 
-	void moveResponseAtomic(std::string &response)
+	void moveResponseAtomically(std::string &response)
 	{
 		std::unique_lock<std::mutex> swapLock(responseMutex);
 		this->responseFull = std::move(response);

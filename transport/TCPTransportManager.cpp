@@ -5,19 +5,19 @@ TCPTransportManager::TCPTransportManager(int millisecondsTimeout)
 		: chunkSize(512),
 		  startAsync(true),
 		  millisecondsTimeout(millisecondsTimeout),
-		  stop(false)
+		  state(PROCEED)
 { }
 
-TCPTransportManager::TCPTransportManager(bool startAsync, size_t chunkSize, int millisecondsTimeout)
+TCPTransportManager::TCPTransportManager(size_t chunkSize, int millisecondsTimeout)
 		: chunkSize(chunkSize),
-		  startAsync(startAsync),
+		  startAsync(true),
 		  millisecondsTimeout(millisecondsTimeout),
-		  stop(false)
+		  state(PROCEED)
 { }
 
 TCPTransportManager::~TCPTransportManager()
 {
-//	stop = true; TODO
+//	state = STOP;
 	packetReceiver.join();
 
 	for (auto& connections: connectionMap)
@@ -26,20 +26,20 @@ TCPTransportManager::~TCPTransportManager()
 	}
 }
 
-void TCPTransportManager::Connect(const std::string& hostName, IHttpResponse* const responseEntity)
+void TCPTransportManager::Connect(const std::string& hostName, const std::shared_ptr<IHttpResponse>& responseEntity)
 {
 	{
 		std::unique_lock<std::mutex> lock(connectionMutex);
-		if (connectionMap.find(hostName) != connectionMap.end()) { return; }
+		if (connectionMap.find(hostName) != connectionMap.end())
+		{ return; }
 	}
 
 	uniq_ptr_del servinfo(NULL, [](addrinfo* srv) { if (srv != NULL) { freeaddrinfo(srv); } });
 	addrinfo *tmp, *next_addrinfo;
 
 	int rc = getaddrinfo(hostName.c_str(), "http", NULL, &tmp);
-	servinfo.reset(tmp);
-
 	if (rc != 0) { throw std::runtime_error("getaddrinfo error: " + std::string(gai_strerror(rc))); }
+	servinfo.reset(tmp);
 
 	int socketDescriptor;
 	for (next_addrinfo = servinfo.get(); next_addrinfo != NULL; next_addrinfo = next_addrinfo->ai_next)
@@ -69,8 +69,33 @@ void TCPTransportManager::Connect(const std::string& hostName, IHttpResponse* co
 	if (next_addrinfo == NULL) { throw std::runtime_error("failed to connect anywhere"); }
 
 	auto connectionPair = std::make_pair(hostName, std::make_pair(socketDescriptor, responseEntity));
-	std::unique_lock<std::mutex> lock(connectionMutex);
+	std::unique_lock<std::mutex> lock(connectionMutex); // TODO double mutex capture, try to optimize
 	connectionMap.insert(connectionPair);
+	state = REFRESH;
+}
+
+void TCPTransportManager::Disconnect(const std::string& hostName)
+{
+	std::unique_lock<std::mutex> lock(connectionMutex);
+	auto connectionIter = connectionMap.find(hostName);
+	if (connectionIter != connectionMap.end())
+	{
+		connectionMap.erase(connectionIter);
+		shutdown(connectionIter->second.first, SHUT_RDWR); // TODO need this?
+		close(connectionIter->second.first);
+	}
+	state = REFRESH;
+}
+
+void TCPTransportManager::DisconnectAll()
+{
+	std::unique_lock<std::mutex> lock(connectionMutex);
+	for (auto& connPair: connectionMap)
+	{
+		shutdown(connPair.second.first, SHUT_RDWR);
+		close(connPair.second.first);
+	}
+	state = REFRESH;
 }
 
 void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
@@ -111,60 +136,66 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 		ssize_t bytesRead = 0;
 		if ((bytesRead = recv(socketDescriptor, serverReply, chunkSize, 0)) < 0 && errno != EAGAIN) // EAGAIN == EWOULDBLOCK
 		{
-
-			throw std::runtime_error(std::string("error happens in recv, error: ").append(std::to_string(errno)));
+			std::cerr << "error happens in recv, error: " << errno << std::endl;
+			break;
 		}
-		std::cout << "bytes received: " << bytesRead << std::endl;
-		finish = (bytesRead == -1 && errno == EAGAIN);
+//		std::cout << "bytes received: " << bytesRead << std::endl;
+		finish = bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN);
 
 		replyMessageStream << serverReply;
 		memset(serverReply, 0, chunkSize);
 	} while (!finish);
 
-	std::cout << "total received: " << replyMessageStream.str().size() << std::endl;
+	totalMSGsize += replyMessageStream.str().size();
+	std::cout << "total received: " << totalMSGsize << std::endl;
 	return replyMessageStream.str();
 }
 
 void TCPTransportManager::Poll()
 {
-	std::unordered_map<int, IHttpResponse*> fdCallbackMap;
-	size_t sockDescriptorIter = 0;
-	pollfd sockDescArray[connectionMap.size()];
+	while (state != STOP)
 	{
-		std::unique_lock<std::mutex> lock(connectionMutex);
-		for (auto& host_fd_callback: connectionMap)
+		std::unordered_map<int, std::shared_ptr<IHttpResponse>> fdCallbackMap;
+		size_t sockDescriptorIter = 0;
+		pollfd sockDescArray[connectionMap.size()];
 		{
-			sockDescArray[sockDescriptorIter] = { host_fd_callback.second.first, POLLIN };
-			fdCallbackMap.insert(host_fd_callback.second);
-			sockDescriptorIter++;
+			std::unique_lock<std::mutex> lock(connectionMutex);
+			for (auto& host_fd_callback: connectionMap)
+			{
+				sockDescArray[sockDescriptorIter] = { host_fd_callback.second.first, POLLIN };
+				fdCallbackMap.insert(host_fd_callback.second);
+				sockDescriptorIter++;
+			}
 		}
-	}
+		TransportStates tmpState = REFRESH;
+		state.compare_exchange_strong(tmpState, PROCEED);
 
-	while (!stop)
-	{
-		int rc = poll(sockDescArray, fdCallbackMap.size(), millisecondsTimeout);
-		if (rc < 0) { std::cerr << "poll error: " << errno << std::endl; break; }
-		if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout << std::endl; continue; }
-
-		for (size_t i=0; i<fdCallbackMap.size(); ++i)
+		while (state == PROCEED)
 		{
-			if (sockDescArray[i].revents & POLLIN)
+			int rc = poll(sockDescArray, fdCallbackMap.size(), millisecondsTimeout);
+			if (rc < 0) { std::cerr << "poll error: " << errno << std::endl; break; }
+			if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout << std::endl; continue; }
+
+			for (size_t i=0; i<fdCallbackMap.size(); ++i)
 			{
-				int socketDescriptor = sockDescArray[i].fd;
-				IHttpResponse* httpResponse = fdCallbackMap[socketDescriptor];
-				httpResponse->responseCallback(Receive(socketDescriptor)); // TODO receive throws
-				rc--;
-				if (rc == 0) { break; };
+				if (sockDescArray[i].revents & POLLIN)
+				{
+					int socketDescriptor = sockDescArray[i].fd;
+					IHttpResponse* httpResponse = fdCallbackMap[socketDescriptor].get();
+					httpResponse->responseCallback(std::move(Receive(socketDescriptor)));
+					rc--;
+					if (rc == 0) { break; };
+				}
+				if (sockDescArray[i].revents & POLLHUP)
+				{
+					std::cout << "closed" << std::endl;
+					rc--;
+					if (rc == 0) { break; };
+				}
+				// POLLERR  /* Error condition.  */
+				// POLLHUP  /* Hung up.  */
+				// POLLNVAL /* Invalid polling request.  */
 			}
-			if (sockDescArray[i].revents & POLLHUP)
-			{
-				std::cout << "closed" << std::endl;
-				rc--;
-				if (rc == 0) { break; };
-			}
-			// POLLERR  /* Error condition.  */
-			// POLLHUP  /* Hung up.  */
-			// POLLNVAL /* Invalid polling request.  */
 		}
 	}
 }

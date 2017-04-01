@@ -1,28 +1,49 @@
 #include "HttpGetResponse.h"
 
 
-HttpGetResponse::HttpGetResponse() : headerTransmited(false) { }
+HttpGetResponse::HttpGetResponse() : headerTransmited(false)
+{
+	file.open("../test1.txt");
+}
+
+HttpGetResponse::~HttpGetResponse()
+{
+	file.close();
+}
 
 void HttpGetResponse::responseCallback(std::string&& responseChunk)
 {
 	localResponse.append(responseChunk);
+	receivedBodySize += responseChunk.size();
 	if (!headerTransmited)
 	{
 		long shift = localResponse.size() - responseChunk.size() - 3;
-		size_t searchCarriege = shift < 0 ? 0 : shift;
-		if (localResponse.find("\r\n\r\n", searchCarriege) != std::string::npos)
+		size_t searchCarriage = shift < 0 ? 0 : shift;
+		size_t foundDoubleNewLine = localResponse.find("\r\n\r\n", searchCarriage);
+		if (foundDoubleNewLine != std::string::npos)
 		{
+			receivedBodySize -= (foundDoubleNewLine + 4);
 			size_t CLCarriage = localResponse.find("Content-Length");
 			size_t RNCarriage = localResponse.find("\r\n", CLCarriage);
-			std::string bodyContentSize = localResponse.substr(CLCarriage, RNCarriage);
-			expectedContentSize = std::stoul(bodyContentSize);
+			std::string bodyContentSize = localResponse.substr(CLCarriage + 15, RNCarriage);
+			contentLength = std::stol(bodyContentSize);
 			headerTransmited = true;
 		}
 	}
 
-	if ((expectedContentSize -= responseChunk.size()) <= 0)
+	if (headerTransmited)
 	{
-		moveResponseAtomic(localResponse);
+		std::cout << "GET: " << contentLength << " " << receivedBodySize << std::endl;
+		file << localResponse;
+
+		if ((contentLength - receivedBodySize) == 0)
+		{
+			std::cout << "GET" << std::endl;
+			moveResponseAtomically(localResponse);
+			headerTransmited = false;
+			contentLength = 0;
+			receivedBodySize = 0;
+		}
 	}
 }
 

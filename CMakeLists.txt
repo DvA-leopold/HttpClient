@@ -9,6 +9,5 @@ set(SOURCE_FILES main.cpp
         response_handlers/HttpGetResponse.cpp response_handlers/HttpGetResponse.h
         response_handlers/HttpHeadResponse.cpp response_handlers/HttpHeadResponse.h
         transport/TCPTransportManager.cpp transport/TCPTransportManager.h
-        http_methods/IHttpMethod.h
-        response_handlers/IHttpResponse.h)
+        response_handlers/IHttpResponse.h http_methods/HttpMethod.cpp http_methods/HttpMethod.h)
 add_executable(HttpClient ${SOURCE_FILES})
