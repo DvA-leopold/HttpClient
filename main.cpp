@@ -20,7 +20,6 @@ int main()
 		//	std::cout << localResponse->getResponseStatus() << std::endl;
 		//	std::cout << localResponse->getResponseHeader() << std::endl;
 		std::cout << "response: " << getResponse->getResponsePart(BODY) << std::endl;
-		std::cout << "after response" << std::endl;
 	}
 	catch (const std::runtime_error& err)
 	{
