@@ -11,7 +11,7 @@ HttpGetResponse::~HttpGetResponse()
 	file.close();
 }
 
-void HttpGetResponse::responseCallback(std::string&& responseChunk)
+void HttpGetResponse::responseCallback(const std::string&& responseChunk)
 {
 	localResponse.append(responseChunk);
 	receivedBodySize += responseChunk.size();
@@ -34,12 +34,12 @@ void HttpGetResponse::responseCallback(std::string&& responseChunk)
 	if (headerTransmited)
 	{
 		std::cout << "GET: " << contentLength << " " << receivedBodySize << std::endl;
-		file << localResponse;
+//		file << localResponse;
 
 		if ((contentLength - receivedBodySize) == 0)
 		{
-			std::cout << "GET" << std::endl;
-			moveResponseAtomically(localResponse);
+//			std::cout << "GET" << std::endl;
+			responsePromise.set_value(std::move(localResponse));
 			headerTransmited = false;
 			contentLength = 0;
 			receivedBodySize = 0;
@@ -47,7 +47,7 @@ void HttpGetResponse::responseCallback(std::string&& responseChunk)
 	}
 }
 
-void HttpGetResponse::parseResponse(const std::string& response)
+void HttpGetResponse::parseResponse(const std::string&& response)
 {
 	size_t first_search_carriage = 0;
 	size_t last_search_carriage = response.find("\r\n");

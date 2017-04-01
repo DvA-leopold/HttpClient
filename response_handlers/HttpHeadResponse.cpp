@@ -3,7 +3,7 @@
 
 HttpHeadResponse::HttpHeadResponse() { }
 
-void HttpHeadResponse::responseCallback(std::string&& responseChunk)
+void HttpHeadResponse::responseCallback(const std::string&& responseChunk)
 {
 	localResponse.append(responseChunk);
 	long shift = localResponse.size() - responseChunk.size() - 3;
@@ -11,11 +11,11 @@ void HttpHeadResponse::responseCallback(std::string&& responseChunk)
 	if (localResponse.find("\r\n\r\n", searchCarriege) != std::string::npos)
 	{
 		std::cout << "HEAD" << std::endl;
-		moveResponseAtomically(localResponse);
+		responsePromise.set_value(std::move(localResponse));
 	}
 }
 
-void HttpHeadResponse::parseResponse(const std::string& response)
+void HttpHeadResponse::parseResponse(const std::string&& response)
 {
 	size_t first_search_carriage = 0;
 	size_t last_search_carriage = response.find("\r\n");

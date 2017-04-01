@@ -10,10 +10,10 @@ class HttpHeadResponse
 {
 public:
 	HttpHeadResponse();
-	void responseCallback(std::string&& responseChunk) override;
+	void responseCallback(const std::string&& responseChunk) override;
 
 protected:
-	void parseResponse(const std::string& response) override;
+	void parseResponse(const std::string&& response) override;
 
 private:
 	std::string localResponse;

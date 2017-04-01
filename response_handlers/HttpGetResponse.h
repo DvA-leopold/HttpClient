@@ -12,10 +12,10 @@ class HttpGetResponse
 public:
 	HttpGetResponse();
 	~HttpGetResponse();
-	void responseCallback(std::string&& responseChunk) override;
+	void responseCallback(const std::string&& responseChunk) override;
 
 private:
-	void parseResponse(const std::string& response) override;
+	void parseResponse(const std::string&& response) override;
 
 private:
 	std::string localResponse;

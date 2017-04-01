@@ -7,6 +7,7 @@
 #include <map>
 #include <mutex>
 #include <atomic>
+#include <future>
 
 typedef std::multimap<std::string, std::string>::iterator multimapIter;
 
@@ -15,34 +16,28 @@ enum ResponseParts
 	STATUS = 0,
 	HEADER,
 	BODY,
-	ALL
 };
 
 class IHttpResponse
 {
 public:
-	IHttpResponse() : responseFinished(false) { }
+	IHttpResponse() { }
 	virtual ~IHttpResponse() { }
 
-	virtual void responseCallback(std::string&& response) = 0;
+	virtual void responseCallback(const std::string&& response) = 0;
 
 	std::string getResponsePart(ResponseParts partNameToGet)
 	{
-		parseResponse(responseFull);
+		parseResponse(responsePromise.get_future().get());
 
-		if (responseFinished)
+		switch (partNameToGet)
 		{
-			switch (partNameToGet)
-			{
-				case STATUS:
-					return responseStatus;
-				case HEADER:
-					return responseHeader;
-				case BODY:
-					return responseBody;
-				case ALL:
-					return responseFull;
-			}
+			case STATUS:
+				return responseStatus;
+			case HEADER:
+				return responseHeader;
+			case BODY:
+				return responseBody;
 		}
 		return "";
 	}
@@ -83,24 +78,15 @@ private:
 	}
 
 protected:
-	virtual void parseResponse(const std::string& response) = 0;
-
-	void moveResponseAtomically(std::string &response)
-	{
-		std::unique_lock<std::mutex> swapLock(responseMutex);
-		this->responseFull = std::move(response);
-	}
+	virtual void parseResponse(const std::string&& response) = 0;
 
 protected:
 	std::string responseStatus;
 	std::string responseHeader;
 	std::string responseBody;
+	std::promise<std::string> responsePromise;
 
 private:
-	std::mutex responseMutex;
-	std::string responseFull;
-	std::atomic<bool> responseFinished;
-
 	std::multimap<std::string, std::string> responseHeaderParams;
 };
 

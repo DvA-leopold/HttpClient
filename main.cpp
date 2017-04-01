@@ -19,5 +19,5 @@ int main()
 
 //	std::cout << localResponse->getResponseStatus() << std::endl;
 //	std::cout << localResponse->getResponseHeader() << std::endl;
-//	std::cout << getResponse->getResponsePart(BODY) << std::endl;
+	std::cout << "response: " << getResponse->getResponsePart(BODY) << std::endl;
 }
