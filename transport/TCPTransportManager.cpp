@@ -157,9 +157,10 @@ void TCPTransportManager::Poll()
 	{
 		std::unordered_map<int, std::shared_ptr<IHttpResponse>> fdCallbackMap;
 		size_t sockDescriptorIter = 0;
-		pollfd sockDescArray[connectionMap.size()];
+		std::unique_ptr<pollfd[]> sockDescArray;
 		{
 			std::unique_lock<std::mutex> lock(connectionMutex);
+			sockDescArray = std::make_unique<pollfd[]>(connectionMap.size());
 			for (auto& host_fd_callback: connectionMap)
 			{
 				sockDescArray[sockDescriptorIter] = { host_fd_callback.second.first, POLLIN };
@@ -172,7 +173,7 @@ void TCPTransportManager::Poll()
 
 		while (state == PROCEED)
 		{
-			int rc = poll(sockDescArray, fdCallbackMap.size(), millisecondsTimeout);
+			int rc = poll(sockDescArray.get(), fdCallbackMap.size(), millisecondsTimeout);
 			if (rc < 0) { std::cerr << "poll error: " << errno << std::endl; break; }
 			if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout << std::endl; continue; }
 
