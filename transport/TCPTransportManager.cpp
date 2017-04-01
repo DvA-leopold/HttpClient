@@ -2,36 +2,30 @@
 
 
 TCPTransportManager::TCPTransportManager(int millisecondsTimeout)
-		: chunkSize(512),
-		  millisecondsTimeout(millisecondsTimeout),
-		  state(PROCEED)
+		: chunkSize_(512),
+		  millisecondsTimeout_(millisecondsTimeout),
+		  state_(PROCEED)
 { }
 
 TCPTransportManager::TCPTransportManager(size_t chunkSize, int millisecondsTimeout)
-		: chunkSize(chunkSize),
-		  millisecondsTimeout(millisecondsTimeout),
-		  state(PROCEED)
+		: chunkSize_(chunkSize),
+		  millisecondsTimeout_(millisecondsTimeout),
+		  state_(PROCEED)
 { }
 
 TCPTransportManager::~TCPTransportManager()
 {
-	state = STOP;
-	packetReceiver.join();
+	state_ = STOP;
+	packetReceiver_.join();
 
-	for (auto& connections: connectionMap)
+	for (auto& connections: socketsToHandlersMap_)
 	{
-		close(connections.second.first);
+		close(connections.first);
 	}
 }
 
-void TCPTransportManager::Connect(const std::string& hostName, const std::shared_ptr<IHttpResponse>& responseEntity)
+int TCPTransportManager::Connect(const std::string& hostName, const std::shared_ptr<IHttpResponse>& responseEntity)
 {
-	{
-		std::unique_lock<std::mutex> lock(connectionMutex);
-		if (connectionMap.find(hostName) != connectionMap.end())
-		{ return; }
-	}
-
 	uniq_ptr_del servinfo(NULL, [](addrinfo* srv) { if (srv != NULL) { freeaddrinfo(srv); } });
 	addrinfo *tmp, *next_addrinfo;
 
@@ -66,45 +60,19 @@ void TCPTransportManager::Connect(const std::string& hostName, const std::shared
 
 	if (next_addrinfo == NULL) { throw std::runtime_error("failed to connect anywhere"); }
 
-	auto connectionPair = std::make_pair(hostName, std::make_pair(socketDescriptor, responseEntity));
-	std::unique_lock<std::mutex> lock(connectionMutex); // TODO second mutex capture, try to optimize
-	connectionMap.insert(connectionPair);
-	state = REFRESH;
-}
-
-void TCPTransportManager::Disconnect(const std::string& hostName)
-{
-	std::unique_lock<std::mutex> lock(connectionMutex);
-	auto connectionIter = connectionMap.find(hostName);
-	if (connectionIter != connectionMap.end())
 	{
-		connectionMap.erase(connectionIter);
-		close(connectionIter->second.first);
+		std::unique_lock<std::mutex> lock(connectionMutex_);
+		socketsToHandlersMap_.insert(std::make_pair(socketDescriptor, responseEntity));
 	}
-	state = REFRESH;
+	state_ = REFRESH;
+	return socketDescriptor;
 }
 
-void TCPTransportManager::DisconnectAll()
+void TCPTransportManager::Send(int socketDescriptor, std::string&& data)
 {
-	std::unique_lock<std::mutex> lock(connectionMutex);
-	for (auto& connPair: connectionMap)
+	if (socketDescriptor == -1)
 	{
-		shutdown(connPair.second.first, SHUT_RDWR);
-		close(connPair.second.first);
-	}
-	state = STOP;
-}
-
-void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
-{
-	int socketDescriptor;
-	{
-		std::unique_lock<std::mutex> lock(connectionMutex);
-		if (connectionMap.find(hostName) == connectionMap.end())
-		{
-			throw std::runtime_error("socket not initialized, u need to connect first");
-		}
-		socketDescriptor = connectionMap[hostName].first;
+		throw std::runtime_error("socket not initialized, u need to connect first");
 	}
 
 	while (!data.empty())
@@ -112,30 +80,28 @@ void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
 		ssize_t bytesSend = send(socketDescriptor, data.c_str(), data.size(), 0);
 		if (bytesSend == -1) { throw std::runtime_error("send error: " + std::to_string(errno)); }
 		data = data.substr(bytesSend);
-//		std::cout << "bytes send: " << bytesSend << std::endl;
 	}
 
-	if (!packetReceiver.joinable())
+	if (!packetReceiver_.joinable())
 	{
-		packetReceiver = std::thread(&TCPTransportManager::Poll, this);
+		packetReceiver_ = std::thread(&TCPTransportManager::Poll, this);
 	}
 }
 
 std::string TCPTransportManager::Receive(int socketDescriptor)
 {
-	char serverReply[chunkSize];
+	char serverReply[chunkSize_];
 	std::stringstream replyMessageStream;
 
 	while (true)
 	{
 		ssize_t bytesRead = 0;
-		if ((bytesRead = recv(socketDescriptor, serverReply, chunkSize, 0)) < 0 && errno != EAGAIN) // EAGAIN == EWOULDBLOCK
+		if ((bytesRead = recv(socketDescriptor, serverReply, chunkSize_, 0)) < 0 && errno != EAGAIN) // EAGAIN == EWOULDBLOCK
 		{
 			std::cerr << "error happens in recv, error: " << errno << std::endl;
 			break;
 		}
-//		std::cout << "bytes received: " << bytesRead << std::endl;
-		if( bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN)) { break; }
+		if( bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN)) { break; } // TODO bytesRead == 0 - remove from map
 
 		replyMessageStream << std::string(serverReply, bytesRead);
 	};
@@ -145,36 +111,37 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 
 void TCPTransportManager::Poll()
 {
-	while (state != STOP)
+	while (state_ != STOP)
 	{
-		std::unordered_map<int, std::shared_ptr<IHttpResponse>> fdCallbackMap;
-		size_t sockDescriptorIter = 0;
+		std::unordered_map<int, std::shared_ptr<IHttpResponse>> responseHandlersMap;
 		std::unique_ptr<pollfd[]> sockDescArray;
 		{
-			std::unique_lock<std::mutex> lock(connectionMutex);
-			sockDescArray = std::make_unique<pollfd[]>(connectionMap.size());
-			for (auto& host_fd_callback: connectionMap)
+			size_t sockDescriptorIter = 0;
+			std::unique_lock<std::mutex> lock(connectionMutex_);
+			sockDescArray = std::make_unique<pollfd[]>(socketsToHandlersMap_.size());
+			for (auto& fd_callback: socketsToHandlersMap_)
 			{
-				sockDescArray[sockDescriptorIter] = { host_fd_callback.second.first, POLLIN };
-				fdCallbackMap.insert(host_fd_callback.second);
+				sockDescArray[sockDescriptorIter] = { fd_callback.first, POLLIN };
 				sockDescriptorIter++;
 			}
+			responseHandlersMap = socketsToHandlersMap_;
 		}
+
 		TransportStates tmpState = REFRESH;
-		state.compare_exchange_strong(tmpState, PROCEED);
+		state_.compare_exchange_strong(tmpState, PROCEED);
 
-		while (state == PROCEED)
+		while (state_ == PROCEED)
 		{
-			int rc = poll(sockDescArray.get(), fdCallbackMap.size(), millisecondsTimeout);
+			int rc = poll(sockDescArray.get(), responseHandlersMap.size(), millisecondsTimeout_);
 			if (rc < 0) { std::cerr << "poll error: " << errno << std::endl; break; }
-			if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout << std::endl; continue; }
+			if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout_ << std::endl; continue; }
 
-			for (size_t i=0; i<fdCallbackMap.size(); ++i)
+			for (size_t i=0; i<responseHandlersMap.size(); ++i)
 			{
 				if (sockDescArray[i].revents & POLLIN)
 				{
 					int socketDescriptor = sockDescArray[i].fd;
-					IHttpResponse* httpResponse = fdCallbackMap[socketDescriptor].get();
+					IHttpResponse* httpResponse = responseHandlersMap[socketDescriptor].get();
 					httpResponse->responseCallback(std::move(Receive(socketDescriptor)));
 					rc--;
 					if (rc == 0) { break; };

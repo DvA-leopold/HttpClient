@@ -10,7 +10,6 @@ class HTTPClient
 public:
     HTTPClient();
 	std::shared_ptr<IHttpResponse> execute(HttpMethod& executeMethod, int secondsWaitForResponse);
-	void CloseClient();
 
 private:
     TCPTransportManager connectionManager;

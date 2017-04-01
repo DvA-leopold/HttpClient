@@ -7,12 +7,7 @@ HTTPClient::HTTPClient()
 std::shared_ptr<IHttpResponse> HTTPClient::execute(HttpMethod& executeMethod, int secondsWaitForResponse)
 {
 	std::shared_ptr<IHttpResponse> response = executeMethod.generateResponseEntity(secondsWaitForResponse);
-	connectionManager.Connect(executeMethod.getHost(), response);
-	connectionManager.Send(executeMethod.getHost(), executeMethod.generateHTTPRequest());
+	int socketDescriptor = connectionManager.Connect(executeMethod.getHost(), response);
+	connectionManager.Send(socketDescriptor, executeMethod.generateHTTPRequest());
 	return response;
-}
-
-void HTTPClient::CloseClient()
-{
-	connectionManager.DisconnectAll();
 }

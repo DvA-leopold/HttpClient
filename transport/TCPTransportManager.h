@@ -16,7 +16,6 @@
 #include <mutex>
 #include "../response_handlers/IHttpResponse.h"
 
-typedef std::pair<int, std::shared_ptr<IHttpResponse>> sock_response;
 typedef std::unique_ptr<addrinfo, std::function<void(addrinfo*)>> uniq_ptr_del;
 
 enum TransportStates
@@ -33,27 +32,24 @@ public:
 	TCPTransportManager(size_t chunkSize = 512, int millisecondsTimeout = 5 * 1000);
 	~TCPTransportManager();
 
-	void Connect(const std::string& hostName, const std::shared_ptr<IHttpResponse>& responseEntity);
-	void Disconnect(const std::string& hostName);
-	void DisconnectAll();
-	void Send(const std::string& hostName, std::string&& data);
+	int Connect(const std::string& hostName, const std::shared_ptr<IHttpResponse>& responseEntity);
+	void Send(int socketDescriptor, std::string&& data);
 
 private:
 	void Poll();
 	std::string Receive(int socketDescriptor);
 
 private:
-	std::mutex connectionMutex;
-	std::unordered_map<std::string, sock_response> connectionMap;
+	std::mutex connectionMutex_;
+	std::unordered_map<int, std::shared_ptr<IHttpResponse>> socketsToHandlersMap_;
 
 private:
-	std::thread packetReceiver;
-	std::atomic<TransportStates> state;
+	std::thread packetReceiver_;
+	std::atomic<TransportStates> state_;
 
 private:
-	size_t chunkSize;
-	const int millisecondsTimeout;
-//	long long totalMSGsize = 0;
+	size_t chunkSize_;
+	const int millisecondsTimeout_;
 };
 
 

@@ -59,9 +59,7 @@ std::string HttpMethod::generateHTTPRequest()
 	{
 		requestStream << param << "\r\n";
 	}
-	requestStream << "\r\n";
-	//		   << "Connection: close" << "\r\n\r\n";
-//	std::cout << "http request: " << requestStream.str() << std::endl;
+	requestStream << "Connection: close" << "\r\n\r\n";
 	return requestStream.str();
 }
 
