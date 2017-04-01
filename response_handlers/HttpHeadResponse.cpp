@@ -1,7 +1,9 @@
 #include "HttpHeadResponse.h"
 
 
-HttpHeadResponse::HttpHeadResponse() { }
+HttpHeadResponse::HttpHeadResponse(int secondsWaitForResponse)
+		: IHttpResponse(secondsWaitForResponse)
+{ }
 
 void HttpHeadResponse::responseCallback(const std::string&& responseChunk)
 {

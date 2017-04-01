@@ -9,7 +9,7 @@ class HttpHeadResponse
 		: public IHttpResponse
 {
 public:
-	HttpHeadResponse();
+	HttpHeadResponse(int secondsWaitForResponse);
 	void responseCallback(const std::string&& responseChunk) override;
 
 protected:

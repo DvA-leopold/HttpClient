@@ -36,16 +36,17 @@ HttpMethod::HttpMethod(const std::string &url, Methods method)
 
 HttpMethod::~HttpMethod() { }
 
-std::shared_ptr<IHttpResponse> HttpMethod::generateResponseEntity()
+std::shared_ptr<IHttpResponse> HttpMethod::generateResponseEntity(int secondsWaitForResponse)
 {
 	switch (method)
 	{
 		case HEAD:
-			return std::make_shared<HttpHeadResponse>();
+			return std::make_shared<HttpHeadResponse>(secondsWaitForResponse);
 		case GET:
-			return std::make_shared<HttpGetResponse>();
+			return std::make_shared<HttpGetResponse>(secondsWaitForResponse);
+		default:
+			throw std::runtime_error("no such method implemented: " + method);
 	}
-	return nullptr;
 }
 
 std::string HttpMethod::generateHTTPRequest()

@@ -1,7 +1,9 @@
 #include "HttpGetResponse.h"
 
 
-HttpGetResponse::HttpGetResponse() : headerTransmited(false)
+HttpGetResponse::HttpGetResponse(int secondsWaitForResponse)
+		: headerTransmited(false)
+		, IHttpResponse(secondsWaitForResponse)
 {
 	file.open("../test1.txt");
 }

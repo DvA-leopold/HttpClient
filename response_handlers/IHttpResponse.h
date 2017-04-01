@@ -21,13 +21,23 @@ enum ResponseParts
 class IHttpResponse
 {
 public:
-	IHttpResponse() { }
+	IHttpResponse(int secondsWaitForResponse)
+			: secondsWaitForResponse(secondsWaitForResponse)
+	{ }
 	virtual ~IHttpResponse() { }
 
 	virtual void responseCallback(const std::string&& response) = 0;
 
 	std::string getResponsePart(ResponseParts partNameToGet)
 	{
+		auto responseFuture = responsePromise.get_future();
+		std::future_status ftrStatus = responseFuture.wait_for(std::chrono::seconds(secondsWaitForResponse));
+
+		if (ftrStatus != std::future_status::ready)
+		{
+			throw std::runtime_error("seems timeout exceeded. Current timeout: " + secondsWaitForResponse);
+		}
+
 		parseResponse(responsePromise.get_future().get());
 
 		switch (partNameToGet)
@@ -87,6 +97,7 @@ protected:
 	std::promise<std::string> responsePromise;
 
 private:
+	int secondsWaitForResponse;
 	std::multimap<std::string, std::string> responseHeaderParams;
 };
 

@@ -24,7 +24,7 @@ public:
 
 	virtual ~HttpMethod();
 
-	std::shared_ptr<IHttpResponse> generateResponseEntity();
+	std::shared_ptr<IHttpResponse> generateResponseEntity(int secondsWaitForResponse);
 
 	virtual std::string generateHTTPRequest();
 

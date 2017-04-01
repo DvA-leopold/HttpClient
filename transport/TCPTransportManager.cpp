@@ -17,7 +17,7 @@ TCPTransportManager::TCPTransportManager(size_t chunkSize, int millisecondsTimeo
 
 TCPTransportManager::~TCPTransportManager()
 {
-//	state = STOP;
+	state = STOP;
 	packetReceiver.join();
 
 	for (auto& connections: connectionMap)
@@ -69,7 +69,7 @@ void TCPTransportManager::Connect(const std::string& hostName, const std::shared
 	if (next_addrinfo == NULL) { throw std::runtime_error("failed to connect anywhere"); }
 
 	auto connectionPair = std::make_pair(hostName, std::make_pair(socketDescriptor, responseEntity));
-	std::unique_lock<std::mutex> lock(connectionMutex); // TODO double mutex capture, try to optimize
+	std::unique_lock<std::mutex> lock(connectionMutex); // TODO second mutex capture, try to optimize
 	connectionMap.insert(connectionPair);
 	state = REFRESH;
 }
@@ -81,7 +81,7 @@ void TCPTransportManager::Disconnect(const std::string& hostName)
 	if (connectionIter != connectionMap.end())
 	{
 		connectionMap.erase(connectionIter);
-		shutdown(connectionIter->second.first, SHUT_RDWR); // TODO need this?
+		shutdown(connectionIter->second.first, SHUT_RDWR); // TODO do i need this?
 		close(connectionIter->second.first);
 	}
 	state = REFRESH;
@@ -95,7 +95,7 @@ void TCPTransportManager::DisconnectAll()
 		shutdown(connPair.second.first, SHUT_RDWR);
 		close(connPair.second.first);
 	}
-	state = REFRESH;
+	state = STOP;
 }
 
 void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
@@ -118,7 +118,7 @@ void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
 		std::cout << "bytes send: " << bytesSend << std::endl;
 	}
 
-	if (startAsync)
+	if (startAsync) // TODO looks ugly
 	{
 		packetReceiver = std::thread(&TCPTransportManager::Poll, this);
 		startAsync = false;
