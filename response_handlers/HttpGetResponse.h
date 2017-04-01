@@ -22,10 +22,6 @@ private:
 	long long receivedBodySize = 0;
 	long contentLength = 0;
 	bool headerTransmited;
-
-	//TODO this is for tests
-private:
-	std::ofstream file;
 };
 
 

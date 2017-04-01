@@ -8,6 +8,7 @@
 #include <mutex>
 #include <atomic>
 #include <future>
+#include <iostream>
 
 typedef std::multimap<std::string, std::string>::iterator multimapIter;
 
@@ -30,12 +31,13 @@ public:
 
 	std::string getResponsePart(ResponseParts partNameToGet)
 	{
-		auto responseFuture = responsePromise.get_future();
+		responseFuture = responsePromise.get_future();
 		std::future_status ftrStatus = responseFuture.wait_for(std::chrono::seconds(secondsWaitForResponse));
 
 		if (ftrStatus != std::future_status::ready)
 		{
-			throw std::runtime_error("timeout exceeded: " + std::to_string(secondsWaitForResponse) + " sec");
+			std::cerr << "timeout exceeded: " << secondsWaitForResponse << " sec." << std::endl;
+			return "";
 		}
 
 		parseResponse(responseFuture.get());
@@ -95,6 +97,7 @@ protected:
 	std::string responseHeader;
 	std::string responseBody;
 	std::promise<std::string> responsePromise;
+	std::future<std::string> responseFuture;
 
 private:
 	int secondsWaitForResponse;

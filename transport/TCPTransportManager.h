@@ -53,7 +53,7 @@ private:
 private:
 	size_t chunkSize;
 	const int millisecondsTimeout;
-	long long totalMSGsize = 0;
+//	long long totalMSGsize = 0;
 };
 
 

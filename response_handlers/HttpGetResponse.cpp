@@ -4,14 +4,10 @@
 HttpGetResponse::HttpGetResponse(int secondsWaitForResponse)
 		: headerTransmited(false)
 		, IHttpResponse(secondsWaitForResponse)
-{
-	file.open("../test1.txt");
-}
+{ }
 
 HttpGetResponse::~HttpGetResponse()
-{
-	file.close();
-}
+{ }
 
 void HttpGetResponse::responseCallback(const std::string&& responseChunk)
 {
@@ -35,12 +31,10 @@ void HttpGetResponse::responseCallback(const std::string&& responseChunk)
 
 	if (headerTransmited)
 	{
-		std::cout << "GET: " << contentLength << " " << receivedBodySize << std::endl;
-//		file << localResponse;
+		std::cout << "ContentLength: " << contentLength << " Size transmitted:" << receivedBodySize << std::endl;
 
-		if ((contentLength - receivedBodySize) == 0)
+		if (receivedBodySize - contentLength == 0)
 		{
-//			std::cout << "GET" << std::endl;
 			responsePromise.set_value(std::move(localResponse));
 			headerTransmited = false;
 			contentLength = 0;

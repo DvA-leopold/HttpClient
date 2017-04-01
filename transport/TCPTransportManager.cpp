@@ -112,7 +112,7 @@ void TCPTransportManager::Send(const std::string& hostName, std::string&& data)
 		ssize_t bytesSend = send(socketDescriptor, data.c_str(), data.size(), 0);
 		if (bytesSend == -1) { throw std::runtime_error("send error: " + std::to_string(errno)); }
 		data = data.substr(bytesSend);
-		std::cout << "bytes send: " << bytesSend << std::endl;
+//		std::cout << "bytes send: " << bytesSend << std::endl;
 	}
 
 	if (!packetReceiver.joinable())
@@ -125,9 +125,8 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 {
 	char serverReply[chunkSize];
 	std::stringstream replyMessageStream;
-	bool finish;
 
-	do
+	while (true)
 	{
 		ssize_t bytesRead = 0;
 		if ((bytesRead = recv(socketDescriptor, serverReply, chunkSize, 0)) < 0 && errno != EAGAIN) // EAGAIN == EWOULDBLOCK
@@ -136,14 +135,11 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 			break;
 		}
 //		std::cout << "bytes received: " << bytesRead << std::endl;
-		finish = bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN);
+		if( bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN)) { break; }
 
-		replyMessageStream << serverReply;
-		memset(serverReply, 0, chunkSize);
-	} while (!finish);
+		replyMessageStream << std::string(serverReply, bytesRead);
+	};
 
-	totalMSGsize += replyMessageStream.str().size();
-	std::cout << "total received: " << totalMSGsize << std::endl;
 	return replyMessageStream.str();
 }
 
