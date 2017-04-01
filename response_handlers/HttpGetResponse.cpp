@@ -2,7 +2,7 @@
 
 
 HttpGetResponse::HttpGetResponse(int secondsWaitForResponse)
-		: headerTransmited(false)
+		: headerTransmited_(false)
 		, IHttpResponse(secondsWaitForResponse)
 { }
 
@@ -11,34 +11,34 @@ HttpGetResponse::~HttpGetResponse()
 
 void HttpGetResponse::responseCallback(const std::string&& responseChunk)
 {
-	localResponse.append(responseChunk);
-	receivedBodySize += responseChunk.size();
-	if (!headerTransmited)
+	localResponse_.append(responseChunk);
+	receivedBodySize_ += responseChunk.size();
+	if (!headerTransmited_)
 	{
-		long shift = localResponse.size() - responseChunk.size() - 3;
+		long shift = localResponse_.size() - responseChunk.size() - 3;
 		size_t searchCarriage = shift < 0 ? 0 : shift;
-		size_t foundDoubleNewLine = localResponse.find("\r\n\r\n", searchCarriage);
+		size_t foundDoubleNewLine = localResponse_.find("\r\n\r\n", searchCarriage);
 		if (foundDoubleNewLine != std::string::npos)
 		{
-			receivedBodySize -= (foundDoubleNewLine + 4);
-			size_t CLCarriage = localResponse.find("Content-Length");
-			size_t RNCarriage = localResponse.find("\r\n", CLCarriage);
-			std::string bodyContentSize = localResponse.substr(CLCarriage + 15, RNCarriage);
-			contentLength = std::stol(bodyContentSize);
-			headerTransmited = true;
+			receivedBodySize_ -= (foundDoubleNewLine + 4);
+			size_t CLCarriage = localResponse_.find("Content-Length");
+			size_t RNCarriage = localResponse_.find("\r\n", CLCarriage);
+			std::string bodyContentSize = localResponse_.substr(CLCarriage + 15, RNCarriage);
+			contentLength_ = std::stol(bodyContentSize);
+			headerTransmited_ = true;
 		}
 	}
 
-	if (headerTransmited)
+	if (headerTransmited_)
 	{
-		std::cout << "ContentLength: " << contentLength << " Size transmitted:" << receivedBodySize << std::endl;
+		std::cout << "ContentLength: " << contentLength_ << " Size transmitted:" << receivedBodySize_ << std::endl;
 
-		if (receivedBodySize - contentLength == 0)
+		if (receivedBodySize_ - contentLength_ == 0)
 		{
-			responsePromise.set_value(std::move(localResponse));
-			headerTransmited = false;
-			contentLength = 0;
-			receivedBodySize = 0;
+			responsePromise_.set_value(std::move(localResponse_));
+			headerTransmited_ = false;
+			contentLength_ = 0;
+			receivedBodySize_ = 0;
 		}
 	}
 }
@@ -47,12 +47,12 @@ void HttpGetResponse::parseResponse(const std::string&& response)
 {
 	size_t first_search_carriage = 0;
 	size_t last_search_carriage = response.find("\r\n");
-	responseStatus = response.substr(first_search_carriage, last_search_carriage - first_search_carriage);
+	responseStatus_ = response.substr(first_search_carriage, last_search_carriage - first_search_carriage);
 
 	first_search_carriage = last_search_carriage + 4;
 	last_search_carriage = response.find("\r\n\r\n", first_search_carriage);
-	responseHeader = response.substr(first_search_carriage, last_search_carriage - first_search_carriage);
+	responseHeader_ = response.substr(first_search_carriage, last_search_carriage - first_search_carriage);
 
 	first_search_carriage = last_search_carriage + 4;
-	responseBody = response.substr(first_search_carriage);
+	responseBody_ = response.substr(first_search_carriage);
 }

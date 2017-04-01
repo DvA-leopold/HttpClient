@@ -12,7 +12,7 @@ public:
 	std::shared_ptr<IHttpResponse> execute(HttpMethod& executeMethod, int secondsWaitForResponse);
 
 private:
-    TCPTransportManager connectionManager;
+    TCPTransportManager connectionManager_;
 };
 
 

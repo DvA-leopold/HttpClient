@@ -33,17 +33,17 @@ public:
 	std::string getHost();
 
 protected:
-	std::string m_url;
+	std::string url_;
 
-	std::string uriHost;
-	std::string uriPath;
-	std::string uriQuery;
-	std::string uriFragment;
+	std::string uriHost_;
+	std::string uriPath_;
+	std::string uriQuery_;
+	std::string uriFragment_;
 
 private:
-	Methods method;
-	std::vector<std::string> requestParams;
-	static const std::vector<std::string> allowedRequestMethods;
+	Methods method_;
+	std::vector<std::string> requestParams_;
+	static const std::vector<std::string> allowedRequestMethods_;
 };
 
 

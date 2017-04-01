@@ -16,7 +16,7 @@ protected:
 	void parseResponse(const std::string&& response) override;
 
 private:
-	std::string localResponse;
+	std::string localResponse_;
 };
 
 

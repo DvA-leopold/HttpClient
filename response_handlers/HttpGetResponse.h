@@ -18,10 +18,10 @@ private:
 	void parseResponse(const std::string&& response) override;
 
 private:
-	std::string localResponse;
-	long long receivedBodySize = 0;
-	long contentLength = 0;
-	bool headerTransmited;
+	std::string localResponse_;
+	long long receivedBodySize_ = 0;
+	long contentLength_ = 0;
+	bool headerTransmited_;
 };
 
 

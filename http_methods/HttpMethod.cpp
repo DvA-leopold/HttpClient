@@ -1,36 +1,36 @@
 #include "HttpMethod.h"
 
 
-const std::vector<std::string> HttpMethod::allowedRequestMethods = {"GET", "HEAD"};
+const std::vector<std::string> HttpMethod::allowedRequestMethods_ = {"GET", "HEAD"};
 
 HttpMethod::HttpMethod(const std::string &url, Methods method)
-		: m_url(url), uriPath("/"), method(method)
+		: url_(url), uriPath_("/"), method_(method)
 {
-	size_t doubleSlash = m_url.find("//");
+	size_t doubleSlash = url_.find("//");
 	if (doubleSlash != std::string::npos)
 	{
-		m_url = m_url.substr(doubleSlash + 2);
+		url_ = url_.substr(doubleSlash + 2);
 	}
-	size_t firstSlash = m_url.find('/');
-	size_t lastSlash = m_url.find_last_of('/');
-	size_t questionMark = m_url.find('?');
-	size_t hashTag = m_url.find('#');
+	size_t firstSlash = url_.find('/');
+	size_t lastSlash = url_.find_last_of('/');
+	size_t questionMark = url_.find('?');
+	size_t hashTag = url_.find('#');
 
-	uriHost = m_url.substr(0, firstSlash);
+	uriHost_ = url_.substr(0, firstSlash);
 
 	if (lastSlash != firstSlash)
 	{
-		uriPath = m_url.substr(firstSlash, questionMark == std::string::npos ? m_url.size() : questionMark);
+		uriPath_ = url_.substr(firstSlash, questionMark == std::string::npos ? url_.size() : questionMark);
 	}
 
 	if (questionMark != std::string::npos)
 	{
-		uriQuery = m_url.substr(questionMark, hashTag == std::string::npos ? m_url.size() : hashTag);
+		uriQuery_ = url_.substr(questionMark, hashTag == std::string::npos ? url_.size() : hashTag);
 	}
 
 	if (hashTag != std::string::npos)
 	{
-		uriFragment = m_url.substr(hashTag);
+		uriFragment_ = url_.substr(hashTag);
 	}
 }
 
@@ -38,24 +38,24 @@ HttpMethod::~HttpMethod() { }
 
 std::shared_ptr<IHttpResponse> HttpMethod::generateResponseEntity(int secondsWaitForResponse)
 {
-	switch (method)
+	switch (method_)
 	{
 		case HEAD:
 			return std::make_shared<HttpHeadResponse>(secondsWaitForResponse);
 		case GET:
 			return std::make_shared<HttpGetResponse>(secondsWaitForResponse);
 		default:
-			throw std::runtime_error("no such method implemented: " + method);
+			throw std::runtime_error("no such method implemented: " + method_);
 	}
 }
 
 std::string HttpMethod::generateHTTPRequest()
 {
 	std::ostringstream requestStream;
-	requestStream << allowedRequestMethods[method] << " " << uriPath << " HTTP/1.1\r\n"
-				  << "Host: " << uriHost << "\r\n";
+	requestStream << allowedRequestMethods_[method_] << " " << uriPath_ << " HTTP/1.1\r\n"
+				  << "Host: " << uriHost_ << "\r\n";
 
-	for (auto& param: requestParams)
+	for (auto& param: requestParams_)
 	{
 		requestStream << param << "\r\n";
 	}
@@ -65,11 +65,11 @@ std::string HttpMethod::generateHTTPRequest()
 
 HttpMethod *HttpMethod::addRequestParam(const std::string &key, const std::string &value)
 {
-	requestParams.push_back(key + ": " + value);
+	requestParams_.push_back(key + ": " + value);
 	return this;
 }
 
 std::string HttpMethod::getHost()
 {
-	return uriHost;
+	return uriHost_;
 }
