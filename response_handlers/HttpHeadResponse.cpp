@@ -5,16 +5,17 @@ HttpHeadResponse::HttpHeadResponse(int secondsWaitForResponse)
 		: IHttpResponse(secondsWaitForResponse)
 { }
 
-void HttpHeadResponse::responseCallback(const std::string&& responseChunk)
+bool HttpHeadResponse::responseCallback(const std::string&& responseChunk)
 {
 	localResponse_.append(responseChunk);
 	long shift = localResponse_.size() - responseChunk.size() - 3;
 	size_t searchCarriege = shift < 0 ? 0 : shift;
 	if (localResponse_.find("\r\n\r\n", searchCarriege) != std::string::npos)
 	{
-//		std::cout << "HEAD" << std::endl;
 		responsePromise_.set_value(std::move(localResponse_));
+		return true;
 	}
+	return false;
 }
 
 void HttpHeadResponse::parseResponse(const std::string&& response)

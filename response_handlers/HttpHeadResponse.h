@@ -10,7 +10,7 @@ class HttpHeadResponse
 {
 public:
 	HttpHeadResponse(int secondsWaitForResponse);
-	void responseCallback(const std::string&& responseChunk) override;
+	bool responseCallback(const std::string&& responseChunk) override;
 
 protected:
 	void parseResponse(const std::string&& response) override;

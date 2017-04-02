@@ -9,7 +9,7 @@ HttpGetResponse::HttpGetResponse(int secondsWaitForResponse)
 HttpGetResponse::~HttpGetResponse()
 { }
 
-void HttpGetResponse::responseCallback(const std::string&& responseChunk)
+bool HttpGetResponse::responseCallback(const std::string&& responseChunk)
 {
 	localResponse_.append(responseChunk);
 	receivedBodySize_ += responseChunk.size();
@@ -31,16 +31,13 @@ void HttpGetResponse::responseCallback(const std::string&& responseChunk)
 
 	if (headerTransmited_)
 	{
-		std::cout << "ContentLength: " << contentLength_ << " Size transmitted:" << receivedBodySize_ << std::endl;
-
 		if (receivedBodySize_ - contentLength_ == 0)
 		{
 			responsePromise_.set_value(std::move(localResponse_));
-			headerTransmited_ = false;
-			contentLength_ = 0;
-			receivedBodySize_ = 0;
+			return true;
 		}
 	}
+	return false;
 }
 
 void HttpGetResponse::parseResponse(const std::string&& response)

@@ -14,6 +14,7 @@
 #include <netdb.h>
 #include <atomic>
 #include <mutex>
+#include <set>
 #include "../response_handlers/IHttpResponse.h"
 
 typedef std::unique_ptr<addrinfo, std::function<void(addrinfo*)>> uniq_ptr_del;

@@ -12,7 +12,7 @@ class HttpGetResponse
 public:
 	HttpGetResponse(int secondsWaitForResponse);
 	~HttpGetResponse();
-	void responseCallback(const std::string&& responseChunk) override;
+	bool responseCallback(const std::string&& responseChunk) override;
 
 private:
 	void parseResponse(const std::string&& response) override;

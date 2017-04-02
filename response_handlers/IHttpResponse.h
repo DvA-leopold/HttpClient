@@ -27,7 +27,7 @@ public:
 	{ }
 	virtual ~IHttpResponse() { }
 
-	virtual void responseCallback(const std::string&& response) = 0;
+	virtual bool responseCallback(const std::string&& response) = 0;
 
 	std::string getResponsePart(ResponseParts partNameToGet)
 	{

@@ -41,6 +41,7 @@ int TCPTransportManager::Connect(const std::string& hostName, const std::shared_
 			std::cerr << "socket error: " << errno << std::endl;
 			continue;
 		}
+
 		if (connect(socketDescriptor, next_addrinfo->ai_addr, next_addrinfo->ai_addrlen) == -1)
 		{
 			std::cerr << "connect error: " << errno << std::endl;
@@ -101,7 +102,7 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 			std::cerr << "error happens in recv, error: " << errno << std::endl;
 			break;
 		}
-		if( bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN)) { break; } // TODO bytesRead == 0 - remove from map
+		if( bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN)) { break; }
 
 		replyMessageStream << std::string(serverReply, bytesRead);
 	};
@@ -115,8 +116,8 @@ void TCPTransportManager::Poll()
 	{
 		std::unordered_map<int, std::shared_ptr<IHttpResponse>> responseHandlersMap;
 		std::unique_ptr<pollfd[]> sockDescArray;
+		size_t sockDescriptorIter = 0;
 		{
-			size_t sockDescriptorIter = 0;
 			std::unique_lock<std::mutex> lock(connectionMutex_);
 			sockDescArray = std::make_unique<pollfd[]>(socketsToHandlersMap_.size());
 			for (auto& fd_callback: socketsToHandlersMap_)
@@ -136,24 +137,29 @@ void TCPTransportManager::Poll()
 			if (rc < 0) { std::cerr << "poll error: " << errno << std::endl; break; }
 			if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout_ << std::endl; continue; }
 
-			for (size_t i=0; i<responseHandlersMap.size(); ++i)
+			for (size_t i=0; i<sockDescriptorIter; ++i)
 			{
 				if (sockDescArray[i].revents & POLLIN)
 				{
 					int socketDescriptor = sockDescArray[i].fd;
 					IHttpResponse* httpResponse = responseHandlersMap[socketDescriptor].get();
-					httpResponse->responseCallback(std::move(Receive(socketDescriptor)));
+					if (httpResponse->responseCallback(std::move(Receive(socketDescriptor))))
+					{
+						std::unique_lock<std::mutex> lock(connectionMutex_);
+						socketsToHandlersMap_.erase(sockDescArray[i].fd);
+					}
 					rc--;
 					if (rc == 0) { break; };
 				}
-				if (sockDescArray[i].revents & POLLHUP)
+				if (sockDescArray[i].revents & POLLHUP) //
 				{
-					std::cout << "closed" << std::endl;
+					std::unique_lock<std::mutex> lock(connectionMutex_);
+					socketsToHandlersMap_.erase(sockDescArray[i].fd);
 					rc--;
 					if (rc == 0) { break; };
 				}
+
 				// POLLERR  /* Error condition.  */
-				// POLLHUP  /* Hung up.  */
 				// POLLNVAL /* Invalid polling request.  */
 			}
 		}
