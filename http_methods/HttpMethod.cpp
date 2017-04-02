@@ -54,7 +54,6 @@ std::string HttpMethod::generateHTTPRequest()
 	std::ostringstream requestStream;
 	requestStream << allowedRequestMethods_[method_] << " " << uriPath_ << " HTTP/1.1\r\n"
 				  << "Host: " << uriHost_ << "\r\n";
-
 	for (auto& param: requestParams_)
 	{
 		requestStream << param << "\r\n";

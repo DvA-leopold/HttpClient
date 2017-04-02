@@ -31,16 +31,20 @@ public:
 
 	std::string getResponsePart(ResponseParts partNameToGet)
 	{
-		responseFuture_ = responsePromise_.get_future();
-		std::future_status ftrStatus = responseFuture_.wait_for(std::chrono::seconds(secondsWaitForResponse_));
-
-		if (ftrStatus != std::future_status::ready)
+		if (!alreadyParced)
 		{
-			std::cerr << "timeout exceeded: " << secondsWaitForResponse_ << " sec." << std::endl;
-			return "";
-		}
+			auto responseFuture = responsePromise_.get_future();
+			std::future_status ftrStatus = responseFuture.wait_for(std::chrono::seconds(secondsWaitForResponse_));
 
-		parseResponse(responseFuture_.get());
+			if (ftrStatus != std::future_status::ready)
+			{
+				std::cerr << "timeout exceeded: " << secondsWaitForResponse_ << " sec." << std::endl;
+				return "";
+			}
+
+			parseResponse(responseFuture.get());
+			alreadyParced = true;
+		}
 
 		switch (partNameToGet)
 		{
@@ -97,7 +101,7 @@ protected:
 	std::string responseHeader_;
 	std::string responseBody_;
 	std::promise<std::string> responsePromise_;
-	std::future<std::string> responseFuture_;
+	bool alreadyParced;
 
 private:
 	int secondsWaitForResponse_;
