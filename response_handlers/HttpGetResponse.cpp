@@ -33,7 +33,12 @@ bool HttpGetResponse::responseCallback(const std::string&& responseChunk)
 	{
 		if (receivedBodySize_ - contentLength_ == 0)
 		{
-			responsePromise_.set_value(std::move(localResponse_));
+			if (!localResponse_.empty())
+			{
+				responsePromise_.set_value(std::move(localResponse_));
+			}
+			receivedBodySize_ = 0;
+			contentLength_ = 0;
 			return true;
 		}
 	}
