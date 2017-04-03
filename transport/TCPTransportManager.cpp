@@ -104,7 +104,7 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 		}
 		if( bytesRead == 0 || (bytesRead == -1 && errno == EAGAIN)) { break; }
 
-		replyMessageStream << std::string(serverReply, bytesRead);
+		replyMessageStream.write(serverReply, bytesRead);
 	};
 
 	return replyMessageStream.str();
