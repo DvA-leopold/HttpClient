@@ -45,7 +45,7 @@ std::shared_ptr<IHttpResponse> HttpMethod::generateResponseEntity(int secondsWai
 		case GET:
 			return std::make_shared<HttpGetResponse>(secondsWaitForResponse);
 		default:
-			throw std::runtime_error("no such method implemented: " + method_);
+			throw std::runtime_error("no such method implemented: " + std::to_string( method_ ) );
 	}
 }
 
