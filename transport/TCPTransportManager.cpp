@@ -110,12 +110,6 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 	return replyMessageStream.str();
 }
 
-void TCPTransportManager::Proceed(std::unordered_map<int, std::shared_ptr<IHttpResponse>> &responseHandlersMap,
-								  std::unique_ptr<pollfd[]> &&sockDescArray, size_t sockDescriptorIter)
-{
-
-}
-
 void TCPTransportManager::Poll()
 {
 	while (state_ != STOP)
