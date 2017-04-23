@@ -110,20 +110,24 @@ std::string TCPTransportManager::Receive(int socketDescriptor)
 	return replyMessageStream.str();
 }
 
+void TCPTransportManager::Proceed(std::unordered_map<int, std::shared_ptr<IHttpResponse>> &responseHandlersMap,
+								  std::unique_ptr<pollfd[]> &&sockDescArray, size_t sockDescriptorIter)
+{
+
+}
+
 void TCPTransportManager::Poll()
 {
 	while (state_ != STOP)
 	{
 		std::unordered_map<int, std::shared_ptr<IHttpResponse>> responseHandlersMap;
-		std::unique_ptr<pollfd[]> sockDescArray;
-		size_t sockDescriptorIter = 0;
+		std::vector<pollfd> sockDescVec;
 		{
 			std::unique_lock<std::mutex> lock(connectionMutex_);
-			sockDescArray = std::make_unique<pollfd[]>(socketsToHandlersMap_.size());
+			sockDescVec.reserve(socketsToHandlersMap_.size());
 			for (auto& fd_callback: socketsToHandlersMap_)
 			{
-				sockDescArray[sockDescriptorIter] = { fd_callback.first, POLLIN };
-				sockDescriptorIter++;
+				sockDescVec.push_back({ fd_callback.first, POLLIN });
 			}
 			responseHandlersMap = socketsToHandlersMap_;
 		}
@@ -133,28 +137,29 @@ void TCPTransportManager::Poll()
 
 		while (state_ == PROCEED)
 		{
-			int rc = poll(sockDescArray.get(), responseHandlersMap.size(), millisecondsTimeout_);
+			if (sockDescVec.empty()) { break; }
+			int rc = poll(&sockDescVec.front(), sockDescVec.size(), millisecondsTimeout_);
 			if (rc < 0) { std::cerr << "poll error: " << errno << std::endl; break; }
 			if (rc == 0) { std::cout << "break by timeout: " << millisecondsTimeout_ << std::endl; continue; }
 
-			for (size_t i=0; i<sockDescriptorIter; ++i)
+			for (auto& sock: sockDescVec)
 			{
-				if (sockDescArray[i].revents & POLLIN)
+				if (sock.revents & POLLIN)
 				{
-					int socketDescriptor = sockDescArray[i].fd;
+					int socketDescriptor = sock.fd;
 					IHttpResponse* httpResponse = responseHandlersMap[socketDescriptor].get();
 					if (httpResponse->responseCallback(std::move(Receive(socketDescriptor))))
 					{
 						std::unique_lock<std::mutex> lock(connectionMutex_);
-						socketsToHandlersMap_.erase(sockDescArray[i].fd);
+						socketsToHandlersMap_.erase(sock.fd);
 					}
 					rc--;
 					if (rc == 0) { break; };
 				}
-				if (sockDescArray[i].revents & POLLHUP) //
+				if (sock.revents & POLLHUP) //
 				{
 					std::unique_lock<std::mutex> lock(connectionMutex_);
-					socketsToHandlersMap_.erase(sockDescArray[i].fd);
+					socketsToHandlersMap_.erase(sock.fd);
 					rc--;
 					if (rc == 0) { break; };
 				}
@@ -165,3 +170,4 @@ void TCPTransportManager::Poll()
 		}
 	}
 }
+

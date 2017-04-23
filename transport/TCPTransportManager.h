@@ -37,6 +37,9 @@ public:
 	void Send(int socketDescriptor, std::string&& data);
 
 private:
+	void Proceed(std::unordered_map<int, std::shared_ptr<IHttpResponse>>& responseHandlersMap,
+				 std::unique_ptr<pollfd[]>&& sockDescArray,
+				 size_t sockDescriptorIter);
 	void Poll();
 	std::string Receive(int socketDescriptor);
 
